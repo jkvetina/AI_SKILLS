@@ -153,7 +153,7 @@ source ~/.zshrc
 
 ## Step 9: Verify Installation
 
-Navigate to your project repository (or any folder) and run:
+Run:
 
 ```bash
 adt config -version
