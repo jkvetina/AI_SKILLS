@@ -15,40 +15,30 @@ Before creating a connection, ensure:
 
 ---
 
-## Step 1: Initialize the Project Config
+## Step 1: Initialize the Project (if not already done)
 
-Before creating a connection, copy the ADT config templates into your project repo. This gives you all the configuration files you can customize per project.
+Before creating a connection, the project repo must be initialized with ADT config files. If not done yet, **read and follow `references/init-repo.md`** to copy `config.yaml`, `patch*` folders, and set up `.gitignore`. Complete that first, then continue here at Step 2.
+
+Note: Some users may already have a connection file from another project or teammate. In that case they can skip straight to Step 3 and just edit the existing `config/connections.yaml`.
+
+---
+
+## Step 2: Copy the Connection Sample
+
+If `config/connections.yaml` doesn't exist yet, copy it from the ADT repo:
 
 ```bash
 cd /path/to/your/project
-
-# Copy the main config file (controls export paths, APEX settings, patch behavior, etc.)
-mkdir -p config
-cp ~/Documents/ADT/config/config.yaml config/config.yaml
-
-# Copy the connection sample as your connection file
 cp ~/Documents/ADT/connections/sample.yaml config/connections.yaml
-
-# Copy patch template folders (used when creating deployment patches)
-cp -r ~/Documents/ADT/config/patch config/patch
-cp -r ~/Documents/ADT/config/patch_scripts config/patch_scripts
-cp -r ~/Documents/ADT/config/patch_template config/patch_template
 ```
 
 Adjust the ADT path (`~/Documents/ADT`) if it was cloned elsewhere.
 
-**What these files do:**
-- `config/config.yaml` — project-level settings: export folder structure, object types, APEX export options, patch naming, Git integration, and more. Review and adjust to your project needs.
-- `config/connections.yaml` — database connection details (you'll edit this next)
-- `config/patch/` — folder for live patches
-- `config/patch_scripts/` — manual SQL scripts to include in patches
-- `config/patch_template/` — templates applied before/after patch sections (init scripts, post-install checks, mview refreshes, job re-creation)
-
-Recommendation: add `config/connections.yaml` (or the entire `config/` folder) to `.gitignore` if you don't want credentials in version control. The other config files are safe to commit.
+Recommendation: add `config/connections.yaml` to `.gitignore` if you don't want credentials in version control.
 
 ---
 
-## Step 2: Edit the Connection File
+## Step 3: Edit the Connection File
 
 Open `config/connections.yaml` and modify it based on your connection type. The three types are shown below.
 
