@@ -1,69 +1,174 @@
 # Database Connection Setup
 
-This guide covers creating and configuring ADT database connections. ADT stores connection details in a YAML file (`config/connections.yaml`) inside the project repository.
+This guide covers creating and configuring ADT database connections. All work must be done from inside the project repository, because the connection file name and location are critical to ADT.
+
+**Important:** Do NOT use `adt config -create` to generate connection files. Instead, copy the provided sample and edit it directly. This gives you full control over the YAML structure and avoids confusion.
 
 ## Prerequisites
 
 Before creating a connection, ensure:
 - ADT is installed and `adt config -version` works
+- You have a Git project repository (the folder you'll run ADT from)
 - You have database credentials (username, password)
 - For OCI cloud: you have a wallet downloaded from OCI console
 - For on-premise: you know the hostname and service name (or SID)
 
 ---
 
-## Connection Types
+## Step 1: Initialize the Project Config
 
-ADT supports three connection types, detected automatically based on which arguments you provide:
+Before creating a connection, copy the ADT config templates into your project repo. This gives you all the configuration files you can customize per project.
+
+```bash
+cd /path/to/your/project
+
+# Copy the main config file (controls export paths, APEX settings, patch behavior, etc.)
+mkdir -p config
+cp ~/Documents/ADT/config/config.yaml config/config.yaml
+
+# Copy the connection sample as your connection file
+cp ~/Documents/ADT/connections/sample.yaml config/connections.yaml
+
+# Copy patch template folders (used when creating deployment patches)
+cp -r ~/Documents/ADT/config/patch config/patch
+cp -r ~/Documents/ADT/config/patch_scripts config/patch_scripts
+cp -r ~/Documents/ADT/config/patch_template config/patch_template
+```
+
+Adjust the ADT path (`~/Documents/ADT`) if it was cloned elsewhere.
+
+**What these files do:**
+- `config/config.yaml` — project-level settings: export folder structure, object types, APEX export options, patch naming, Git integration, and more. Review and adjust to your project needs.
+- `config/connections.yaml` — database connection details (you'll edit this next)
+- `config/patch/` — folder for live patches
+- `config/patch_scripts/` — manual SQL scripts to include in patches
+- `config/patch_template/` — templates applied before/after patch sections (init scripts, post-install checks, mview refreshes, job re-creation)
+
+Recommendation: add `config/connections.yaml` (or the entire `config/` folder) to `.gitignore` if you don't want credentials in version control. The other config files are safe to commit.
+
+---
+
+## Step 2: Edit the Connection File
+
+Open `config/connections.yaml` and modify it based on your connection type. The three types are shown below.
+
+---
+
+## Connection Types
 
 ### 1. Cloud (OCI) Connection
 
 For Oracle Cloud Infrastructure (Autonomous Database). Uses a wallet for authentication.
 
-Required arguments: `-user`, `-pwd`, `-service`, `-wallet`, `-wallet_pwd`
-
-```bash
-adt config -create \
-    -user USER_NAME \
-    -pwd USER_PASSWORD \
-    -service SERVICE_NAME_high \
-    -wallet /path/to/Wallet_INSTANCE_NAME \
-    -wallet_pwd WALLET_PASSWORD
+```yaml
+DEV:                                          # your environment name, must match ADT_ENV
+    db:
+        hostname    :                         # leave empty for OCI cloud
+        lang        :                         # optional language setting (e.g., AMERICAN_AMERICA.AL32UTF8)
+        port        : 1521
+        service     : INSTANCE_NAME_high      # from wallet's tnsnames.ora (_high, _medium, _low)
+        sid         :
+        thick       : ''                      # 'Y' or path to Instant Client for thick mode
+    defaults:
+        schema_apex : YOUR_SCHEMA_NAME        # your schema used/exposed in APEX
+        schema_db   : YOUR_SCHEMA_NAME        # your DB schema
+    schemas:
+        YOUR_SCHEMA_NAME:                     # your schema name
+            db:
+                pwd     : ''                  # your password
+                pwd!    :                     # 'Y' if you want password encrypted with ADT_KEY
+                user    : YOUR_SCHEMA_NAME
+                proxy   :                     # proxy user, e.g., 'USER[SCHEMA]' for proxy authentication
+            export:
+                ignore      : ''              # ignore objects matching these prefixes, e.g., 'ABC%,DEF%'
+                prefix      : ''              # export only objects matching these prefixes
+                subfolder   :                 # subfolder name for multi-schema exports
+    wallet:                                   # wallet for OCI connections, delete for on-premise
+        wallet      : config/Wallet_INSTANCE_NAME
+        wallet_pwd  : ''                      # wallet password
+        wallet_pwd! :                         # 'Y' if you want password encrypted with ADT_KEY
 ```
 
-The `-service` value comes from the wallet's `tnsnames.ora`. Common suffixes are `_high`, `_medium`, `_low` (indicating different resource priorities).
+Fill in:
+- `service` — from the wallet's `tnsnames.ora` (common suffixes: `_high`, `_medium`, `_low`)
+- `YOUR_SCHEMA_NAME` — replace all 4 occurrences with your actual schema name
+- `pwd` — your database password
+- `wallet` — path to the wallet directory (relative to the project repo or absolute)
+- `wallet_pwd` — wallet password from OCI console
+- Leave `hostname` empty — it's not used for cloud connections
 
 ### 2. Normal (On-Premise) Connection
 
 For on-premise databases using service name. This is the most common on-premise setup.
 
-Required arguments: `-user`, `-pwd`, `-hostname`, `-service`
-
-```bash
-adt config -create \
-    -schema SCHEMA_NAME \
-    -user USER_NAME \
-    -pwd USER_PASSWORD \
-    -hostname HOST_NAME \
-    -service SERVICE_NAME
+```yaml
+DEV:                                          # your environment name, must match ADT_ENV
+    db:
+        hostname    : your-db-host.example.com
+        lang        :                         # optional language setting
+        port        : 1521
+        service     : YOUR_SERVICE_NAME
+        sid         :
+        thick       : ''                      # 'Y' or path to Instant Client for thick mode
+    defaults:
+        schema_apex : YOUR_SCHEMA_NAME        # your schema used/exposed in APEX
+        schema_db   : YOUR_SCHEMA_NAME        # your DB schema
+    schemas:
+        YOUR_SCHEMA_NAME:                     # your schema name
+            db:
+                pwd     : ''                  # your password
+                pwd!    :                     # 'Y' if you want password encrypted with ADT_KEY
+                user    : YOUR_SCHEMA_NAME
+                proxy   :                     # proxy user, e.g., 'USER[SCHEMA]' for proxy authentication
+            export:
+                ignore      : ''              # ignore objects matching these prefixes, e.g., 'ABC%,DEF%'
+                prefix      : ''              # export only objects matching these prefixes
+                subfolder   :                 # subfolder name for multi-schema exports
 ```
 
-Port defaults to 1521. Override with `-port` if different.
+Fill in:
+- `hostname` — your database server hostname or IP
+- `service` — the Oracle service name
+- `port` — change if not the default 1521
+- `YOUR_SCHEMA_NAME` — replace all 4 occurrences
+- `pwd` — your database password
+- **Delete the entire `wallet:` section** — it's not needed for on-premise
 
 ### 3. Legacy (On-Premise with SID) Connection
 
 For older on-premise databases that use SID instead of service name.
 
-Required arguments: `-user`, `-pwd`, `-hostname`, `-sid`
-
-```bash
-adt config -create \
-    -schema SCHEMA_NAME \
-    -user USER_NAME \
-    -pwd USER_PASSWORD \
-    -hostname HOST_NAME \
-    -sid SID_NAME
+```yaml
+DEV:                                          # your environment name, must match ADT_ENV
+    db:
+        hostname    : your-db-host.example.com
+        lang        :                         # optional language setting
+        port        : 1521
+        service     :
+        sid         : YOUR_SID
+        thick       : ''                      # 'Y' or path to Instant Client for thick mode
+    defaults:
+        schema_apex : YOUR_SCHEMA_NAME        # your schema used/exposed in APEX
+        schema_db   : YOUR_SCHEMA_NAME        # your DB schema
+    schemas:
+        YOUR_SCHEMA_NAME:                     # your schema name
+            db:
+                pwd     : ''                  # your password
+                pwd!    :                     # 'Y' if you want password encrypted with ADT_KEY
+                user    : YOUR_SCHEMA_NAME
+                proxy   :                     # proxy user, e.g., 'USER[SCHEMA]' for proxy authentication
+            export:
+                ignore      : ''              # ignore objects matching these prefixes, e.g., 'ABC%,DEF%'
+                prefix      : ''              # export only objects matching these prefixes
+                subfolder   :                 # subfolder name for multi-schema exports
 ```
+
+Fill in:
+- `hostname`, `port`, `sid` — your database details
+- Leave `service` empty — SID is used instead
+- `YOUR_SCHEMA_NAME` — replace all 4 occurrences
+- `pwd` — your database password
+- **Delete the entire `wallet:` section** — it's not needed
 
 ---
 
@@ -77,77 +182,53 @@ For OCI connections, you need to download and configure a wallet:
    config/Wallet_INSTANCE_NAME/
    ```
 3. The wallet folder should contain: `tnsnames.ora`, `sqlnet.ora`, `cwallet.sso`, `ewallet.p12`, `keystore.jks`, `truststore.jks`, `ojdbc.properties`
-4. Pass the wallet path to `-wallet` when creating the connection
+4. Set the `wallet` value in `connections.yaml` to this path
 
 Recommendation: add the entire `config/` folder to `.gitignore` to keep credentials out of version control.
 
 ---
 
-## The `-create` Command — All Flags
-
-| Flag | Description | Default |
-|---|---|---|
-| `-user` | Database username | (required) |
-| `-pwd` | Database password | (required) |
-| `-hostname` | Database host (on-premise only) | |
-| `-port` | Database port | 1521 |
-| `-service` | Service name | |
-| `-sid` | SID (legacy on-premise only, use instead of `-service`) | |
-| `-wallet` | Path to wallet directory (OCI only) | |
-| `-wallet_pwd` | Wallet password (OCI only) | |
-| `-schema` | Schema name (defaults to `-user` value if omitted) | |
-| `-env` | Environment name (DEV, UAT, PROD...) | `$ADT_ENV` |
-| `-thick` | Enable thick mode: `'Y'` for auto-resolve or path to Instant Client | |
-| `-key` | Encryption key or path to key file | `$ADT_KEY` |
-| `-prefix` | Export only objects matching these prefixes (comma-separated) | |
-| `-ignore` | Ignore objects matching these prefixes (comma-separated) | |
-| `-subfolder` | Subfolder name for exports (useful with multiple schemas) | |
-| `-workspace` | APEX workspace name | |
-| `-app` | APEX application ID(s) to export as default | |
-| `-default` | Mark this schema as the default for APEX or DB operations | |
-| `-decrypt` | Store passwords in plain text (not encrypted) | false |
-
----
-
 ## The `connections.yaml` File Structure
 
-ADT creates and reads `config/connections.yaml` in the project repo. Here is the full structure:
+Here is the full structure with all optional sections shown:
 
 ```yaml
-DEV:                              # environment name, matches ADT_ENV
+DEV:                                          # environment name, matches ADT_ENV
     db:
-        hostname    :             # empty for OCI cloud connections
-        lang        :             # optional language setting
+        hostname    :                         # empty for OCI cloud connections
+        lang        :                         # optional language setting (e.g., AMERICAN_AMERICA.AL32UTF8)
         port        : 1521
-        service     : SERVICE_NAME_high
-        sid         :             # use instead of service for legacy connections
-        thick       : ''          # 'Y' or path to Instant Client for thick mode
+        service     : SERVICE_NAME_high       # service name (or leave empty if using SID)
+        sid         :                         # use instead of service for legacy connections
+        thick       : ''                      # 'Y' or path to Instant Client for thick mode
     defaults:
-        schema_apex : SCHEMA_NAME # default schema for APEX operations
-        schema_db   : SCHEMA_NAME # default schema for DB operations
+        schema_apex : SCHEMA_NAME             # default schema for APEX operations
+        schema_db   : SCHEMA_NAME             # default schema for DB operations
     schemas:
-        SCHEMA_NAME:              # one entry per schema you work with
+        SCHEMA_NAME:                          # one entry per schema you work with
             db:
-                pwd     : ''      # plain or encrypted password
-                pwd!    :         # 'Y' if password is encrypted with ADT_KEY
+                pwd     : ''                  # plain or encrypted password
+                pwd!    :                     # 'Y' if password is encrypted with ADT_KEY
                 user    : SCHEMA_NAME
-            apex:                 # optional, only if APEX workspace/app are set
+                proxy   :                     # proxy user, e.g., 'USER[SCHEMA]'
+            apex:                             # optional — only add if you need to limit APEX exports
                 workspace : WORKSPACE_NAME
                 app       : 100
-            export:               # optional, only if prefix/ignore/subfolder are set
-                ignore      : 'ABC%,DEF%'
-                prefix      : ''
-                subfolder   :
-    wallet:                       # only for OCI cloud connections
-        wallet      : /path/to/Wallet_INSTANCE_NAME
-        wallet_pwd  : ''
-        wallet_pwd! :             # 'Y' if encrypted
+            export:                           # optional — for filtering exported objects
+                ignore      : ''              # ignore objects matching these prefixes, e.g., 'ABC%,DEF%'
+                prefix      : ''              # export only objects matching these prefixes
+                subfolder   :                 # subfolder name for multi-schema exports
+    wallet:                                   # only for OCI cloud connections, delete for on-premise
+        wallet      : config/Wallet_INSTANCE_NAME
+        wallet_pwd  : ''                      # wallet password
+        wallet_pwd! :                         # 'Y' if encrypted with ADT_KEY
 ```
 
-Key points about the YAML structure:
-- The `wallet` section is automatically removed for on-premise connections
-- The `apex` section is removed if workspace is empty
-- The `export` section is removed if all fields (prefix, ignore, subfolder) are empty
+Key points:
+- The `wallet:` section must be **deleted entirely** for on-premise connections (not just left empty)
+- The `apex:` section is optional — only add it if you need to specify a workspace or app ID
+- The `export:` section fields can be left empty — they are shown so the user knows what's available
+- `proxy` is for proxy authentication (e.g., `'JAN[WKSP_PHX]'`) — leave empty if not used
 - Passwords with `!` suffix (e.g., `pwd!`) are encryption flags — when set to `'Y'`, the corresponding password field contains an encrypted value
 
 ---
@@ -155,41 +236,70 @@ Key points about the YAML structure:
 ## Connection File Locations
 
 ADT looks for connection files in this order:
-1. `{repo}/config/connections.yaml` — per-project connection file (most common)
-2. `{ADT_install}/connections/{project_folder_name}.yaml` — centralized connection file named after your project folder
+1. `{repo}/config/connections.yaml` — per-project connection file (most common, recommended)
+2. `{ADT_install}/connections/{project_folder_name}.yaml` — centralized connection file, **filename must match the project repo folder name exactly**
 
 The first match wins. For most users, the per-project file at `config/connections.yaml` is the right choice.
+
+**Important:** If using option 2 (centralized connections), the YAML file name must match the name of your project folder. For example, if your project is at `~/Documents/MY_PROJECT/`, the file must be `~/Documents/ADT/connections/MY_PROJECT.yaml`. A mismatch means ADT won't find the connection.
 
 ---
 
 ## Multi-Schema Setup
 
-To work with multiple schemas in the same environment, run `-create` once per schema:
+To add more schemas, add entries under the `schemas:` section:
 
-```bash
-# First schema
-adt config -create -schema HR -user HR_USER -pwd HR_PWD -hostname db.example.com -service ORCL -default
-
-# Second schema (same environment, different subfolder)
-adt config -create -schema FINANCE -user FIN_USER -pwd FIN_PWD -hostname db.example.com -service ORCL -subfolder finance
+```yaml
+DEV:
+    db:
+        hostname    : db.example.com
+        lang        :
+        port        : 1521
+        service     : ORCL
+        sid         :
+        thick       : ''
+    defaults:
+        schema_apex : HR
+        schema_db   : HR
+    schemas:
+        HR:
+            db:
+                pwd     : 'hr_password'
+                pwd!    :
+                user    : HR
+                proxy   :
+            export:
+                ignore      : ''
+                prefix      : ''
+                subfolder   :
+        FINANCE:
+            db:
+                pwd     : 'fin_password'
+                pwd!    :
+                user    : FINANCE
+                proxy   :
+            export:
+                ignore      : ''
+                prefix      : ''
+                subfolder   : finance       # keep exports separate from HR
 ```
 
-Each schema gets its own entry under the `schemas` section. Use `-subfolder` to keep exports organized when multiple schemas coexist in the same repo. Use `-default` on the schema you work with most — it becomes the default for `schema_apex` or `schema_db` in the `defaults` section.
+Use `subfolder` to keep exports organized when multiple schemas coexist in the same repo. Set the schema you work with most as the default in the `defaults:` section.
 
 ---
 
 ## Multiple Environments
 
-You can have multiple environments (DEV, UAT, PROD) in the same `connections.yaml`:
+You can have multiple environments (DEV, UAT, PROD) in the same `connections.yaml`. Just add another top-level block:
 
 ```yaml
 DEV:
     db:
-        hostname: dev-db.example.com
+        hostname    : dev-db.example.com
         ...
 UAT:
     db:
-        hostname: uat-db.example.com
+        hostname    : uat-db.example.com
         ...
 ```
 
@@ -205,12 +315,9 @@ ADT can encrypt passwords in `connections.yaml` using the `ADT_KEY` environment 
    ```bash
    export ADT_KEY=YOUR_SECRET_KEY
    ```
-2. When running `adt config -create`, passwords are automatically encrypted if `ADT_KEY` is set
-3. Alternatively, pass `-key` directly: `adt config -create ... -key YOUR_SECRET_KEY`
-4. To store passwords in plain text, add `-decrypt` to the create command
-5. Encrypted passwords are marked with `pwd!: 'Y'` (or `wallet_pwd!: 'Y'`) in the YAML file
-
-Keep `ADT_KEY` consistent across team members who share the same encrypted `connections.yaml`.
+2. Run any ADT command — if `ADT_KEY` is set and `pwd!` is not `'Y'`, ADT will encrypt the password on first use and set `pwd!: 'Y'`
+3. To keep passwords in plain text, leave `ADT_KEY` unset or don't set the `pwd!` flag
+4. Keep `ADT_KEY` consistent across team members who share the same encrypted `connections.yaml`
 
 ---
 
@@ -221,16 +328,15 @@ ADT uses the Python `oracledb` driver which supports two modes:
 - **Thin mode** (default) — pure Python, no Instant Client needed. Works with OCI cloud connections and most modern on-premise setups.
 - **Thick mode** — uses Oracle Instant Client native libraries. Required for on-premise databases with older password compatibility (below 12c) or specific Oracle Net features.
 
-To enable thick mode, either:
-- Pass `-thick Y` when creating the connection (auto-resolves Instant Client from `$ORACLE_HOME`)
-- Pass `-thick /path/to/instantclient` for a specific Instant Client path
-- Set `thick: 'Y'` or `thick: '/path/to/instantclient'` directly in `connections.yaml`
+To enable thick mode, set the `thick` value in `connections.yaml`:
+- `thick: 'Y'` — auto-resolves Instant Client from `$ORACLE_HOME`
+- `thick: '/path/to/instantclient'` — explicit Instant Client path
 
 ---
 
 ## Verifying a Connection
 
-After creating a connection, test it:
+After setting up the connection file, test it:
 
 ```bash
 cd /path/to/your/project
@@ -242,15 +348,4 @@ This connects to the database using the current environment (`ADT_ENV`) and defa
 - Network access to the database host
 - Wallet path and password (for OCI)
 - Thick mode setting (for on-premise with older password hashes)
-
----
-
-## Editing Connections Manually
-
-You can also edit `config/connections.yaml` directly in any text editor. This is useful for:
-- Adjusting export filters (`ignore`, `prefix`) without re-running `-create`
-- Adding or removing schemas
-- Changing default schemas
-- Fine-tuning settings that don't have a `-create` flag
-
-After manual edits, verify with `adt config` to ensure the YAML is valid and the connection works.
+- That the `wallet:` section is deleted for on-premise connections

@@ -25,6 +25,17 @@ This path needs to be added to your system PATH (see Step 8).
 
 ## Step 2: Clone the ADT Repository
 
+First, check if ADT is already cloned somewhere on the machine:
+
+```cmd
+dir /s /b C:\Users\USER_NAME\Documents\ADT\config.py 2>nul
+dir /s /b C:\Users\USER_NAME\ADT\config.py 2>nul
+```
+
+If found, use that existing location — no need to clone again. Just run `git pull` inside it to get the latest version.
+
+If not found, clone it:
+
 ```cmd
 cd C:\Users\USER_NAME\Documents
 git clone https://github.com/jkvetina/ADT.git
@@ -63,13 +74,25 @@ SQLcl requires Java. Check if already installed:
 java -version
 ```
 
-If not present, download from: https://www.oracle.com/java/technologies/downloads/
-
-Install and set `JAVA_HOME`:
+If present, find where it is installed (needed for `JAVA_HOME` in Step 8):
 
 ```cmd
-set JAVA_HOME=C:\Program Files\Java\jdk-17
+where java
 ```
+
+This typically returns something like `C:\Program Files\Java\jdk-17\bin\java.exe`. The `JAVA_HOME` should be the parent directory without `\bin`, e.g., `C:\Program Files\Java\jdk-17`.
+
+You can also check the registry or common locations:
+
+```cmd
+dir "C:\Program Files\Java" 2>nul
+dir "C:\Program Files\Eclipse Adoptium" 2>nul
+dir "C:\Program Files\Microsoft\jdk-*" 2>nul
+```
+
+If Java is not present, download from: https://www.oracle.com/java/technologies/downloads/
+
+After installation, verify `JAVA_HOME` points to the correct directory (without `\bin`).
 
 ---
 
@@ -172,16 +195,37 @@ set ADT_ENV=DEV
 
 ## Step 9: Create the ADT Command Alias
 
-On Windows there is no shell function like on Mac. Instead, create a batch file `adt.bat` and place it somewhere in your PATH (e.g. `C:\Users\USER_NAME\bin\` — add this to PATH too):
+On Windows there is no shell function like on Mac. Instead, create a batch file `adt.bat` and place it somewhere in your PATH (e.g. `C:\Users\USER_NAME\bin\` — add this to PATH too).
+
+The `adt.bat` file should also SET environment variables at the start, so it works from any Command Prompt without needing to run `setenv.bat` first:
 
 ```bat
 @echo off
+
+rem Environment variables (adjust paths to match your setup, use 'where java' to find JAVA_HOME)
+set LANG=en_US.UTF-8
+set ORACLE_HOME=C:\Users\USER_NAME\instantclient_21_10
+set CLIENT_HOME=%ORACLE_HOME%
+set TNS_ADMIN=%ORACLE_HOME%
+set CLASSPATH=%ORACLE_HOME%
+set DYLD_LIBRARY_PATH=%ORACLE_HOME%
+set LD_LIBRARY_PATH=%ORACLE_HOME%
+set OCI_LIB_DIR=%ORACLE_HOME%
+set OCI_INC_DIR=%ORACLE_HOME%\sdk\include
+set JAVA_HOME=C:\Program Files\Java\jdk-17
+set PATH=%PATH%;%ORACLE_HOME%;%ORACLE_HOME%\sqlcl\bin
+set GIT_PYTHON_REFRESH=quiet
+set GIT_PYTHON_GIT_EXECUTABLE=C:\Users\USER_NAME\AppData\Local\GitHubDesktop\app-X.X.X\resources\app\git\mingw64\bin\git.exe
+set ADT_KEY=YOUR_SECRET_KEY
+set ADT_ENV=DEV
+
+rem Run ADT
 set SCRIPT=%1
 shift
 python C:\Users\USER_NAME\Documents\ADT\%SCRIPT%.py %1 %2 %3 %4 %5 %6 %7 %8 %9
 ```
 
-This lets you run `adt config -version` from any Command Prompt.
+This lets you run `adt config -version` from any Command Prompt without any prior setup.
 
 Alternatively, if using PowerShell, add a function to your `$PROFILE`:
 
@@ -192,6 +236,8 @@ function adt {
     python C:\Users\USER_NAME\Documents\ADT\$script.py @remaining
 }
 ```
+
+Note: The PowerShell approach does not embed environment variables — set those via System Environment Variables (Step 8) instead.
 
 ---
 

@@ -21,6 +21,16 @@ If not installed, either:
 
 ## Step 2: Clone the ADT Repository
 
+First, check if ADT is already cloned somewhere on the machine:
+
+```bash
+find ~ -maxdepth 3 -name "config.py" -path "*/ADT/*" 2>/dev/null
+```
+
+If found, use that existing location — no need to clone again. Just run `git pull` inside it to get the latest version.
+
+If not found, clone it:
+
 ```bash
 cd ~/Documents
 git clone https://github.com/jkvetina/ADT.git
@@ -54,11 +64,22 @@ SQLcl requires Java. Check if it is already installed:
 java -version
 ```
 
-If not present, download from https://www.oracle.com/java/technologies/downloads/ or install via Homebrew:
+If present, find where it is installed (needed for `JAVA_HOME` in Step 8):
+
+```bash
+/usr/libexec/java_home
+```
+
+This returns the path like `/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home`. Use this for `JAVA_HOME`.
+
+If Java is not present, download from https://www.oracle.com/java/technologies/downloads/ or install via Homebrew:
 
 ```bash
 brew install openjdk@17
 ```
+
+After Homebrew install, `JAVA_HOME` is typically:
+`/opt/homebrew/opt/openjdk@17` (Apple Silicon) or `/usr/local/opt/openjdk@17` (Intel).
 
 ---
 
@@ -115,6 +136,9 @@ pip3 install -r ~/Documents/ADT/requirements.txt --upgrade
 Edit `~/.zshrc` (or `~/.bash_profile` if using bash). Add the following block — adjust paths to match actual install locations:
 
 ```bash
+# Java (use output of /usr/libexec/java_home to find the correct path)
+export JAVA_HOME=$(/usr/libexec/java_home 2>/dev/null)
+
 # Oracle Instant Client (skip if not installed)
 export ORACLE_HOME=~/instantclient_19_16
 export DYLD_LIBRARY_PATH=$ORACLE_HOME
