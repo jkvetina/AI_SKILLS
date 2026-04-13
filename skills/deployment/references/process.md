@@ -168,7 +168,7 @@ The Team Leader (or designated reviewer) must verify the following before approv
 
 - Review the Git diff and verify the code changes are correct and complete.
 - All acceptance criteria defined on the task are fulfilled.
-- SQL and PL/SQL code complies with the formatting standards (see `plsql-format` skill) and code quality guidelines (see `plsql-code-quality` skill).
+- SQL and PL/SQL code complies with the formatting standards (see `plsql-formatter` skill) and code quality guidelines (see `plsql-code-quality` skill).
 - APEX changes comply with the QA standards (see `apex-qa` skill): component naming conventions, MVC separation, no inline SQL or PL/SQL on pages, Embedded Code Report and Advisor reviewed.
 - No hardcoded credentials, URLs, or environment-specific values.
 - Proper error handling (EXCEPTION blocks follow the standard pattern).
